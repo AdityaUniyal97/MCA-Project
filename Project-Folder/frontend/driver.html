@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Driver Dashboard</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial;
+        }
+
+        .navbar {
+            background: #1e90ff;
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #driverInfo {
+            padding: 10px;
+            background: #f2f2f2;
+            font-weight: bold;
+        }
+
+        #map {
+            height: calc(100vh - 120px);
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Navbar -->
+    <div class="navbar">
+        <h3>Driver Dashboard 🚍</h3>
+        <a href="index.html" style="color:white">Logout</a>
+    </div>
+
+    <!-- Driver info from backend -->
+    <div id="driverInfo">Loading driver info...</div>
+
+    <!-- Map -->
+    <div id="map"></div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+    <script>
+        // Initialize map
+        const map = L.map("map").setView([30.3165, 78.0322], 13);
+
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            attribution: "&copy; OpenStreetMap contributors"
+        }).addTo(map);
+
+        // Bus marker
+        const busMarker = L.marker([30.3165, 78.0322])
+            .addTo(map)
+            .bindPopup("Your Bus 🚍");
+
+        // ✅ GET request to backend
+        async function getDriverInfo() {
+            try {
+                const response = await fetch("http://localhost:5000/api/driver/info");
+                const data = await response.json();
+
+                document.getElementById("driverInfo").innerText =
+                    `Driver: ${data.driverName} | Bus: ${data.busNumber} | Status: ${data.status}`;
+
+            } catch (error) {
+                document.getElementById("driverInfo").innerText =
+                    "Error fetching driver info";
+            }
+        }
+
+        // Call GET request when page loads
+        getDriverInfo();
+    </script>
+
+</body>
+
+</html>
