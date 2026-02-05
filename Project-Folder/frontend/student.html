@@ -1,21 +1,29 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
+    <meta charset="UTF-8" />
     <title>Student Dashboard</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <style>
         body {
             margin: 0;
-            font-family: Arial;
+            font-family: "Segoe UI", system-ui, sans-serif;
+            background: #f1f5f9;
         }
 
         .navbar {
             background: #1e90ff;
             color: white;
-            padding: 20px;
+            padding: 18px 24px;
             display: flex;
             justify-content: space-between;
+            align-items: center;
+        }
+
+        .navbar h3 {
+            margin: 0;
+            font-size: 1.15rem;
         }
 
         #map {
@@ -27,24 +35,79 @@
 <body>
 
     <div class="navbar">
-        <h3>Student Dashboard 🎓</h3>
-        <a href="index.html" style="color:white">Logout</a>
+        <h3 id="studentTitle">Student Dashboard 🎓</h3>
+        <a href="index.html" style="color:white" data-logout>Logout</a>
     </div>
 
     <div id="map"></div>
 
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script>
+        const API_BASE = "http://localhost:5000/api";
+        const STORAGE_KEYS = {
+            token: "mcaAuthToken",
+            role: "mcaAuthRole",
+            name: "mcaDisplayName"
+        };
+
+        const sessionToken = localStorage.getItem(STORAGE_KEYS.token);
+        const sessionRole = localStorage.getItem(STORAGE_KEYS.role);
+        const sessionName = localStorage.getItem(STORAGE_KEYS.name);
+
+        const clearSession = () => {
+            Object.values(STORAGE_KEYS).forEach(key => localStorage.removeItem(key));
+        };
+
+        const redirectToLogin = () => {
+            clearSession();
+            window.location.href = "index.html";
+        };
+
+        if (!sessionToken || sessionRole !== "Student") {
+            if (sessionRole === "Driver") {
+                clearSession();
+                window.location.href = "driver.html";
+            } else {
+                redirectToLogin();
+            }
+        }
+
+        document.querySelector("[data-logout]")?.addEventListener("click", event => {
+            event.preventDefault();
+            redirectToLogin();
+        });
+
+        const heroTitle = document.getElementById("studentTitle");
+        if (sessionName && heroTitle) {
+            heroTitle.textContent = `${sessionName} · Student Dashboard`;
+        }
+
         const map = L.map("map").setView([30.3165, 78.0322], 13);
-
         L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
-
         L.marker([30.3165, 78.0322])
             .addTo(map)
-            .bindPopup("Bus Location 🚍")
+            .bindPopup("Bus Location 📍")
             .openPopup();
-    </script>
 
+        fetch(`${API_BASE}/auth/me`, {
+            headers: {
+                Authorization: `Bearer ${sessionToken}`
+            }
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error("Invalid session");
+                }
+                return response.json();
+            })
+            .then(body => {
+                if (body?.user?.displayName && body.user.displayName !== sessionName && heroTitle) {
+                    heroTitle.textContent = `${body.user.displayName} · Student Dashboard`;
+                    localStorage.setItem(STORAGE_KEYS.name, body.user.displayName);
+                }
+            })
+            .catch(() => redirectToLogin());
+    </script>
 </body>
 
 </html>

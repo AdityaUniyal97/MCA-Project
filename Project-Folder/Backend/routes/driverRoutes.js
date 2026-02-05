@@ -1,12 +1,13 @@
 const express = require("express");
+const authMiddleware = require("../middleware/authMiddleware");
 const router = express.Router();
 
-// GET request
-router.get("/info", (req, res) => {
+router.get("/info", authMiddleware, (req, res) => {
     res.json({
-        driverName: "ABS",
+        driverName: "ABS Kuldeep",
         busNumber: "UK07-1234",
-        status: "Online"
+        status: "Online",
+        user: req.user
     });
 });
 

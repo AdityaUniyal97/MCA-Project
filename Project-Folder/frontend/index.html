@@ -1,50 +1,144 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
-    <title>Student Dashboard</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <style>
-        body {
-            margin: 0;
-            font-family: Arial;
-        }
-
-        .navbar {
-            background: #1e90ff;
-            color: white;
-            padding: 20px;
-            display: flex;
-            justify-content: space-between;
-        }
-
-        #map {
-            height: calc(100vh - 70px);
-        }
-    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MCA Bus Portal · Login</title>
+    <link rel="stylesheet" href="css/auth.css">
 </head>
 
 <body>
+    <div class="auth-wrapper">
+        <div class="auth-card">
+            <header class="auth-header">
+                <h1>MCA Bus Portal</h1>
+                <p>Login or create an account to continue.</p>
+            </header>
 
-    <div class="navbar">
-        <h3>Student Dashboard 🎓</h3>
-        <a href="index.html" style="color:white">Logout</a>
+            <div class="tab-controls">
+                <button type="button" class="active" data-tab="login">Login</button>
+                <button type="button" data-tab="signup">Sign up</button>
+            </div>
+
+            <form id="loginForm" class="form-panel active">
+                <label>
+                    <span>Email</span>
+                    <input type="email" name="email" placeholder="your@school.edu" required />
+                </label>
+                <label>
+                    <span>Password</span>
+                    <input type="password" name="password" placeholder="••••••••" required minlength="6" />
+                </label>
+                <button type="submit">Login</button>
+            </form>
+
+            <form id="signupForm" class="form-panel">
+                <label>
+                    <span>Display name</span>
+                    <input type="text" name="displayName" placeholder="Ravi Kumar" required />
+                </label>
+                <label>
+                    <span>Email</span>
+                    <input type="email" name="email" placeholder="student@example.com" required />
+                </label>
+                <label>
+                    <span>Password</span>
+                    <input type="password" name="password" placeholder="Create a strong password" required minlength="6" />
+                </label>
+                <label>
+                    <span>Role</span>
+                    <select name="role">
+                        <option value="Student" selected>Student</option>
+                        <option value="Driver">Driver</option>
+                    </select>
+                </label>
+                <button type="submit">Sign up</button>
+            </form>
+        </div>
     </div>
 
-    <div id="map"></div>
-
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script>
-        const map = L.map("map").setView([30.3165, 78.0322], 13);
+        const API_BASE = "http://localhost:5000/api";
+        const STATUS_MESSAGE = document.getElementById("statusMessage");
+        const SESSION_KEYS = {
+            token: "mcaAuthToken",
+            role: "mcaAuthRole",
+            name: "mcaDisplayName"
+        };
+        const tabButtons = document.querySelectorAll("[data-tab]");
+        const formPanels = document.querySelectorAll(".form-panel");
 
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
+        const setStatus = (message, state = "info") => {
+            if (!STATUS_MESSAGE) return;
+            STATUS_MESSAGE.textContent = message;
+            STATUS_MESSAGE.dataset.state = state;
+        };
 
-        L.marker([30.3165, 78.0322])
-            .addTo(map)
-            .bindPopup("Bus Location 🚍")
-            .openPopup();
+        const switchPanel = target => {
+            tabButtons.forEach(button => {
+                button.classList.toggle("active", button.dataset.tab === target);
+            });
+            formPanels.forEach(panel => {
+                panel.classList.toggle("active", panel.id === `${target}Form`);
+            });
+        };
+
+        tabButtons.forEach(button => {
+            button.addEventListener("click", () => switchPanel(button.dataset.tab));
+        });
+
+        const storeSession = data => {
+            if (!data?.token) {
+                throw new Error("Token not provided by backend.");
+            }
+
+            localStorage.setItem(SESSION_KEYS.token, data.token);
+            localStorage.setItem(SESSION_KEYS.role, data.role);
+            localStorage.setItem(SESSION_KEYS.name, data.displayName || data.email || "");
+
+            const target = data.role === "Driver" ? "driver.html" : "student.html";
+            window.location.href = target;
+        };
+
+        const sendRequest = async (path, body, method = "POST") => {
+            const response = await fetch(`${API_BASE}${path}`, {
+                method,
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(body)
+            });
+
+            const payload = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                throw new Error(payload.message || "Unexpected error from server.");
+            }
+
+            return payload;
+        };
+
+        const handleSubmit = (form, path) => {
+            form.addEventListener("submit", async event => {
+                event.preventDefault();
+                const formData = new FormData(form);
+                const payload = Object.fromEntries(formData.entries());
+
+                try {
+                    setStatus("Processing…", "info");
+                    const response = await sendRequest(path, payload);
+                    setStatus(response.message || "Success", "success");
+                    storeSession(response);
+                } catch (error) {
+                    setStatus(error.message, "error");
+                }
+            });
+        };
+
+        handleSubmit(document.getElementById("loginForm"), "/auth/login");
+        handleSubmit(document.getElementById("signupForm"), "/auth/signup");
     </script>
-
 </body>
 
 </html>
